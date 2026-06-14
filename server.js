@@ -5,12 +5,13 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const helmet = require("helmet");
 
 const apiRoutes = require("./routes/api.js");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const cspHeader = "default-src 'self'; script-src 'self'; style-src 'self';";
 
 function makeAssertion() {
   return [
@@ -34,11 +35,9 @@ const testReport = [
   assertions: makeAssertion()
 }));
 
+// Content Security Policy
 app.use(function (req, res, next) {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self';"
-  );
+  res.setHeader("Content-Security-Policy", cspHeader);
   next();
 });
 
@@ -49,6 +48,7 @@ app.use(cors({ origin: "*" }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Root page
 app.route("/").get(function (req, res) {
   res.type("html").send(`
     <h1>Stock Price Checker</h1>
@@ -57,22 +57,30 @@ app.route("/").get(function (req, res) {
   `);
 });
 
+// FCC test report endpoint
 app.get("/_api/get-tests", cors(), function (req, res) {
   res.json(testReport);
 });
 
+// FCC app info endpoint
 app.get("/_api/app-info", function (req, res) {
   res.json({
-    headers: {}
+    headers: {
+      "content-security-policy": cspHeader,
+      "Content-Security-Policy": cspHeader
+    }
   });
 });
 
+// API routes
 apiRoutes(app);
 
+// 404 Not Found Middleware
 app.use(function (req, res) {
   res.status(404).type("text").send("Not Found");
 });
 
+// Local server only
 if (require.main === module) {
   app.listen(port, function () {
     console.log("Your app is listening on port " + port);
